@@ -8,5 +8,6 @@
     <Menu text="Navigation">
         <MenuItem text="Tableau de bord" onAction="#showDashboard"/>
         <MenuItem text="Dépenses" onAction="#showExpenses"/>
+        <MenuItem text="Revenus" onAction="#showIncomes"/>
     </Menu>
 </MenuBar>

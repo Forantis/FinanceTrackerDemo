@@ -1,16 +1,20 @@
 package com.example.financemanager.controller;
 
 import com.example.financemanager.db.ExpenseDAO;
+import com.example.financemanager.db.IncomeDAO;
 import com.example.financemanager.model.Expense;
+import com.example.financemanager.model.Income;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.chart.*;
 import javafx.scene.control.ChoiceBox;
+import javafx.scene.control.Tooltip;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class DashboardController {
 
@@ -21,10 +25,19 @@ public class DashboardController {
     private LineChart<String, Float> lineChart;
 
     @FXML
+    private BarChart<String, Number> compareChart;
+
+    @FXML
     private CategoryAxis xAxis;
 
     @FXML
     private NumberAxis yAxis;
+
+    @FXML
+    private CategoryAxis compareXAxis;
+
+    @FXML
+    private NumberAxis compareYAxis;
 
     @FXML
     private ChoiceBox<String> periodChoiceBox;
@@ -35,7 +48,7 @@ public class DashboardController {
     public void initialize() {
         LocalDate date = LocalDate.now();
 
-        loadExpenses(date);
+        loadExpensesAndIncomes(date);
 
         for (int i = 0; i < 12; i++) {
             periodChoiceBox.getItems().add(date.format(FULL_DATE_FORMAT));
@@ -44,26 +57,53 @@ public class DashboardController {
         periodChoiceBox.getSelectionModel().selectFirst();
     }
 
-    private List<Expense> loadExpenses(LocalDate currentMonth) {
-
-        List<Expense> lastExpenses = ExpenseDAO.findLastExpensesEndingAtCurrentMonth(12, currentMonth);
-
-        if (lastExpenses.isEmpty()) {
-            return null;
+    private void loadExpensesAndIncomes(LocalDate currentMonth) {
+        // Récupérer les données avec une plage suffisamment grande pour couvrir le mois sélectionné et les 4 mois précédents
+        YearMonth selectedYearMonth = YearMonth.from(currentMonth);
+        YearMonth startYearMonth = selectedYearMonth.minusMonths(4);
+        LocalDate startDate = startYearMonth.atDay(1);
+        LocalDate endDate = selectedYearMonth.atEndOfMonth();
+        
+        // Utiliser une période personnalisée qui englobe exactement les 5 mois nécessaires
+        List<Expense> periodExpenses = ExpenseDAO.findExpensesBetweenDates(startDate, endDate);
+        List<Income> periodIncomes = IncomeDAO.findIncomesBetweenDates(startDate, endDate);
+        
+        if (periodExpenses.isEmpty() && periodIncomes.isEmpty()) {
+            return;
         }
 
-        pieChart.getData().clear();
-        lineChart.getData().clear();
+        // Filtrer les dépenses du mois sélectionné pour le PieChart
+        LocalDate startOfSelectedMonth = selectedYearMonth.atDay(1);
+        LocalDate endOfSelectedMonth = selectedYearMonth.atEndOfMonth();
+        
+        List<Expense> currentMonthExpenses = periodExpenses.stream()
+                .filter(e -> !e.getDate().isBefore(startOfSelectedMonth) && !e.getDate().isAfter(endOfSelectedMonth))
+                .collect(Collectors.toList());
+                
+        updatePieChart(currentMonthExpenses.isEmpty() ? periodExpenses : currentMonthExpenses);
+        updateLineChart(periodExpenses);
+        updateCompareChart(periodExpenses, periodIncomes);
+    }
 
+    private void updatePieChart(List<Expense> expenses) {
+        if (expenses.isEmpty()) return;
+
+        pieChart.getData().clear();
         pieChart.getData().addAll(
-                new PieChart.Data("Logement", lastExpenses.getFirst().getHousing()),
-                new PieChart.Data("Nourriture", lastExpenses.getFirst().getFood()),
-                new PieChart.Data("Sortie", lastExpenses.getFirst().getGoingOut()),
-                new PieChart.Data("Transport", lastExpenses.getFirst().getTransportation()),
-                new PieChart.Data("Voyage", lastExpenses.getFirst().getTravel()),
-                new PieChart.Data("Impôts", lastExpenses.getFirst().getTax()),
-                new PieChart.Data("Autres", lastExpenses.getFirst().getOther())
+                new PieChart.Data("Logement", expenses.getFirst().getHousing()),
+                new PieChart.Data("Nourriture", expenses.getFirst().getFood()),
+                new PieChart.Data("Sortie", expenses.getFirst().getGoingOut()),
+                new PieChart.Data("Transport", expenses.getFirst().getTransportation()),
+                new PieChart.Data("Voyage", expenses.getFirst().getTravel()),
+                new PieChart.Data("Impôts", expenses.getFirst().getTax()),
+                new PieChart.Data("Autres", expenses.getFirst().getOther())
         );
+    }
+
+    private void updateLineChart(List<Expense> expenses) {
+        if (expenses.isEmpty()) return;
+
+        lineChart.getData().clear();
 
         XYChart.Series<String, Float> seriesHousing = new XYChart.Series<>();
         seriesHousing.setName("Logement");
@@ -80,14 +120,15 @@ public class DashboardController {
         XYChart.Series<String, Float> seriesOther = new XYChart.Series<>();
         seriesOther.setName("Autres");
 
-        lastExpenses.stream().sorted(Comparator.comparing(Expense::getDate)).forEach(expense -> {
-            seriesHousing.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getHousing()));
-            seriesFood.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getFood()));
-            seriesGoingOut.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getGoingOut()));
-            seriesTransportation.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getTransportation()));
-            seriesTravel.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getTravel()));
-            seriesTax.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getTax()));
-            seriesOther.getData().add(new XYChart.Data<>(expense.getDate().format(DATE_FORMAT), expense.getOther()));
+        expenses.stream().sorted(Comparator.comparing(Expense::getDate)).forEach(expense -> {
+            String dateStr = expense.getDate().format(DATE_FORMAT);
+            seriesHousing.getData().add(new XYChart.Data<>(dateStr, expense.getHousing()));
+            seriesFood.getData().add(new XYChart.Data<>(dateStr, expense.getFood()));
+            seriesGoingOut.getData().add(new XYChart.Data<>(dateStr, expense.getGoingOut()));
+            seriesTransportation.getData().add(new XYChart.Data<>(dateStr, expense.getTransportation()));
+            seriesTravel.getData().add(new XYChart.Data<>(dateStr, expense.getTravel()));
+            seriesTax.getData().add(new XYChart.Data<>(dateStr, expense.getTax()));
+            seriesOther.getData().add(new XYChart.Data<>(dateStr, expense.getOther()));
         });
 
         lineChart.getData().addAll(
@@ -99,12 +140,118 @@ public class DashboardController {
                 seriesTax,
                 seriesOther
         );
-        return lastExpenses;
+    }
+
+    private void updateCompareChart(List<Expense> expenses, List<Income> incomes) {
+        compareChart.getData().clear();
+
+        // Créer les séries de données
+        XYChart.Series<String, Number> expenseSeries = new XYChart.Series<>();
+        expenseSeries.setName("Dépenses");
+
+        XYChart.Series<String, Number> incomeSeries = new XYChart.Series<>();
+        incomeSeries.setName("Revenus");
+
+        // Récupérer le mois sélectionné
+        YearMonth currentMonth = YearMonth.now();
+        String selectedPeriod = periodChoiceBox.getSelectionModel().getSelectedItem();
+        if (selectedPeriod != null && !selectedPeriod.isEmpty()) {
+            LocalDate selectedDate = LocalDate.parse("01 " + selectedPeriod, DateTimeFormatter.ofPattern("dd MMMM yyyy"));
+            currentMonth = YearMonth.from(selectedDate);
+        }
+        
+        // Créer une liste des mois à afficher (mois sélectionné + 4 mois précédents)
+        List<YearMonth> monthsToDisplay = new ArrayList<>();
+        
+        // Inclure le mois sélectionné et les 4 mois précédents
+        for (int i = 0; i <= 4; i++) {
+            monthsToDisplay.add(currentMonth.minusMonths(i));
+        }
+        
+        // Trier les mois par ordre chronologique
+        Collections.sort(monthsToDisplay);
+        
+        // Agréger les données par mois
+        Map<YearMonth, Double> expensesByMonth = new HashMap<>();
+        Map<YearMonth, Double> incomesByMonth = new HashMap<>();
+        
+        for (Expense expense : expenses) {
+            YearMonth month = YearMonth.from(expense.getDate());
+            if (monthsToDisplay.contains(month)) {
+                expensesByMonth.merge(month, (double) expense.getTotal(), Double::sum);
+            }
+        }
+        
+        for (Income income : incomes) {
+            YearMonth month = YearMonth.from(income.getDate());
+            if (monthsToDisplay.contains(month)) {
+                incomesByMonth.merge(month, (double) income.getTotalIncome(), Double::sum);
+            }
+        }
+        
+        // Ajouter les données au graphique dans l'ordre chronologique
+        for (YearMonth month : monthsToDisplay) {
+            String monthLabel = month.format(DateTimeFormatter.ofPattern("MMM yy"));
+            
+            double expenseAmount = expensesByMonth.getOrDefault(month, 0.0);
+            XYChart.Data<String, Number> expenseData = new XYChart.Data<>(monthLabel, expenseAmount);
+            expenseSeries.getData().add(expenseData);
+            
+            double incomeAmount = incomesByMonth.getOrDefault(month, 0.0);
+            XYChart.Data<String, Number> incomeData = new XYChart.Data<>(monthLabel, incomeAmount);
+            incomeSeries.getData().add(incomeData);
+        }
+        
+        compareChart.getData().addAll(expenseSeries, incomeSeries);
+        
+        // Force JavaFX à mettre à jour le graphique immédiatement
+        compareChart.layout();
+        
+        // Appliquer les tooltips après un court délai pour s'assurer que les nœuds sont créés
+        javafx.application.Platform.runLater(() -> {
+            // Attendre que JavaFX finisse le rendu
+            try {
+                // Petit délai pour laisser JavaFX terminer
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            // Appliquer manuellement les tooltips à chaque nœud
+            for (int i = 0; i < compareChart.getData().size(); i++) {
+                XYChart.Series<String, Number> series = compareChart.getData().get(i);
+                String seriesName = series.getName();
+                
+                for (int j = 0; j < series.getData().size(); j++) {
+                    XYChart.Data<String, Number> data = series.getData().get(j);
+                    
+                    if (data.getNode() != null) {
+                        final double value = data.getYValue().doubleValue();
+                        final Tooltip tooltip = new Tooltip(String.format("%s: %.2f €", seriesName, value));
+                        tooltip.setStyle("-fx-font-size: 14px;");
+                        
+                        javafx.scene.Node node = data.getNode();
+                        Tooltip.install(node, tooltip);
+                        
+                        // Ajouter un effet visuel explicite au survol
+                        final javafx.scene.Node finalNode = node;
+                        node.setOnMouseEntered(event -> {
+                            finalNode.setStyle("-fx-background-color: orange;");
+                            tooltip.show(finalNode, event.getScreenX(), event.getScreenY() + 15);
+                        });
+                        node.setOnMouseExited(event -> {
+                            finalNode.setStyle("");
+                            tooltip.hide();
+                        });
+                    }
+                }
+            }
+        });
     }
 
     public void changePeriod(ActionEvent actionEvent) {
         var periodSelected = periodChoiceBox.getSelectionModel().getSelectedItem();
         LocalDate dateSelected = LocalDate.parse("01 " + periodSelected, DateTimeFormatter.ofPattern("dd MMMM yyyy"));
-        loadExpenses(dateSelected);
+        loadExpensesAndIncomes(dateSelected);
     }
 }

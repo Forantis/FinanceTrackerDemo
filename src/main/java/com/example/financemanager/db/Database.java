@@ -20,16 +20,16 @@ public class Database {
     private static final String location = "database.db";
 
     /**
-     * Currently only table needed
+     * Required tables
      */
-    private static final String requiredTable = "Expense";
+    private static final String[] requiredTables = {"Expense", "Income"};
 
     public static boolean isOK() {
         if (!checkDrivers()) return false; //driver errors
 
         if (!checkConnection()) return false; //can't connect to db
 
-        return createTableIfNotExists(); //tables didn't exist
+        return createTablesIfNotExist(); //tables didn't exist
     }
 
     private static boolean checkDrivers() {
@@ -52,24 +52,42 @@ public class Database {
         }
     }
 
-    private static boolean createTableIfNotExists() {
-        String createTables =
+    private static boolean createTablesIfNotExist() {
+        String createExpenseTable =
                 """
-                        CREATE TABLE IF NOT EXISTS expense(
-                             date TEXT NOT NULL,
-                             housing REAL NOT NULL,
-                             food REAL NOT NULL,
-                             goingOut REAL NOT NULL,
-                             transportation REAL NOT NULL,
-                             travel REAL NOT NULL,
-                             tax REAL NOT NULL,
-                             other REAL NOT NULL
-                     );
-                   """;
+                CREATE TABLE IF NOT EXISTS expense(
+                     date TEXT NOT NULL,
+                     housing REAL NOT NULL,
+                     food REAL NOT NULL,
+                     goingOut REAL NOT NULL,
+                     transportation REAL NOT NULL,
+                     travel REAL NOT NULL,
+                     tax REAL NOT NULL,
+                     other REAL NOT NULL
+                );
+                """;
+
+        String createIncomeTable =
+                """
+                CREATE TABLE IF NOT EXISTS income(
+                     date TEXT NOT NULL,
+                     salary REAL NOT NULL,
+                     aid REAL NOT NULL,
+                     freelanceIncome REAL NOT NULL,
+                     passiveIncome REAL NOT NULL,
+                     otherIncome REAL NOT NULL
+                );
+                """;
 
         try (Connection connection = Database.connect()) {
-            PreparedStatement statement = connection.prepareStatement(createTables);
-            statement.executeUpdate();
+            // Create Expense table
+            PreparedStatement statementExpense = connection.prepareStatement(createExpenseTable);
+            statementExpense.executeUpdate();
+
+            // Create Income table
+            PreparedStatement statementIncome = connection.prepareStatement(createIncomeTable);
+            statementIncome.executeUpdate();
+
             return true;
         } catch (SQLException exception) {
             log.error("Could not create tables in database", exception);
@@ -91,5 +109,4 @@ public class Database {
         }
         return connection;
     }
-
 }

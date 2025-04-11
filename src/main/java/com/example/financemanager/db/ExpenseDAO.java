@@ -118,4 +118,38 @@ public class ExpenseDAO {
         return lastExpenses;
 
     }
+
+    /**
+     * Trouve les dépenses entre deux dates spécifiques
+     * @param startDate Date de début (incluse)
+     * @param endDate Date de fin (incluse)
+     * @return Liste des dépenses entre les dates spécifiées
+     */
+    public static List<Expense> findExpensesBetweenDates(LocalDate startDate, LocalDate endDate) {
+        List<Expense> result = new ArrayList<>();
+        String query = "SELECT * FROM " + tableName + 
+                       " WHERE " + dateColumn + " >= '" + startDate.format(DATE_FORMAT) + "'" +
+                       " AND " + dateColumn + " <= '" + endDate.format(DATE_FORMAT) + "'" +
+                       " ORDER BY " + dateColumn + " DESC";
+
+        try (Connection connection = Database.connect()) {
+            PreparedStatement statement = connection.prepareStatement(query);
+            ResultSet rs = statement.executeQuery();
+            while (rs.next()) {
+                result.add(new Expense(
+                        LocalDate.parse(rs.getString(dateColumn), DATE_FORMAT),
+                        rs.getFloat(housingColumn),
+                        rs.getFloat(foodColumn),
+                        rs.getFloat(goingOutColumn),
+                        rs.getFloat(transportationColumn),
+                        rs.getFloat(travelColumn),
+                        rs.getFloat(taxColumn),
+                        rs.getFloat(otherColumn)));
+            }
+        } catch (SQLException e) {
+            log.error("Could not load expenses between dates from database", e);
+        }
+        
+        return result;
+    }
 }

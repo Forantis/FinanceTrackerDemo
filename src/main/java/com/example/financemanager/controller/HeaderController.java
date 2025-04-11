@@ -38,4 +38,14 @@ public class HeaderController {
         stage.show();
         logger.info("showExpenses end");
     }
+
+    public void showIncomes(ActionEvent event) throws IOException {
+        logger.info("showIncomes called");
+        FXMLLoader fxmlLoader = new FXMLLoader(FinanceTrackerApplication.class.getResource("income-view.fxml"));
+        Stage stage = (Stage) root.getScene().getWindow();
+        Scene scene = new Scene(fxmlLoader.load());
+        stage.setScene(scene);
+        stage.show();
+        logger.info("showIncomes end");
+    }
 }

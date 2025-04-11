@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.cell.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import com.example.financemanager.component.SwitchButton?>
+<BorderPane xmlns:fx="http://javafx.com/fxml/1" prefHeight="400.0" prefWidth="950.0"
+            stylesheets="@css/styles.css" xmlns="http://javafx.com/javafx/10.0.2-internal"
+            fx:controller="com.example.financemanager.controller.IncomeController">
+    <top>
+        <fx:include source="header.fxml"/>
+    </top>
+    <center>
+        <VBox spacing="10" styleClass="background-pane">
+            <HBox alignment="CENTER" style="-fx-spacing: 50;">
+                <Label styleClass="title-text" text="Tableau récapitulatif des revenus"/>
+                <SwitchButton leftLabel="€" rightLabel="\$" onAction="#switchCurrency" prefWidth="80.0" switchOn="true" />
+            </HBox>
+            <VBox>
+                <TableView fx:id="incomeTable">
+                    <columns>
+                        <TableColumn editable="false" text="Période">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="date"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Total">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="total"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Salaire">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="salary"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Aides">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="aid"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Revenus Freelance">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="freelanceIncome"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Revenus passifs">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="passiveIncome"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                        <TableColumn editable="false" text="Autre">
+                            <cellValueFactory>
+                                <PropertyValueFactory property="otherIncome"/>
+                            </cellValueFactory>
+                        </TableColumn>
+                    </columns>
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                </TableView>
+            </VBox>
+            <HBox alignment="CENTER_RIGHT" prefHeight="40.0" spacing="20.0" BorderPane.alignment="CENTER">
+                <Button text="Ajouter" onAction="#addIncome"/>
+            </HBox>
+        </VBox>
+    </center>
+</BorderPane>
